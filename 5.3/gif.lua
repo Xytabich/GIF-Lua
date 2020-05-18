@@ -30,9 +30,9 @@ end
 local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLen, wordMin, wordFull, str, strLen)
   local part, max, prevPart, ind, ps = {}, strLen*8, ""
   while true do
-    if dictIndex >= wordFull then
+    if dictIndex > wordFull then
       wordLen = wordLen+1
-      wordFull = wordLen^2-1
+      wordFull = 2^wordLen-1
     end
     if index+wordLen >= max then break end
     ind = readBits(str, index, wordLen)
@@ -90,7 +90,7 @@ local function readImage(stream, struct, tmpExt)
   
   local clear, stop = #dict+1, #dict+2
   local dictIndex, bitIndex = stop+1, 0 -- dictIndex - next entry index
-  local wordLen, wordFull = lzwMin, lzwMin^2-1
+  local wordLen, wordFull = lzwMin, 2^lzwMin-1
   
   local data, part = ""
   local len = str:byte(2)
