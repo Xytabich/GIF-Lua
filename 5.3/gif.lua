@@ -55,6 +55,7 @@ local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLe
         index = index+wordLen
         if not invDict[ps] then
           dict[dictIndex] = ps
+          invDict[ps] = dictIndex
           if dictIndex > wordFull then wordLen=wordLen+1 end
           dictIndex = dictIndex+1
         end
