@@ -25,7 +25,7 @@ local function readExtension(id, stream, struct)--todo: записывать р�
     table.insert(struct.extensions, ext)
   end--todo: читалка текста и анимации кадров
   repeat
-    len = stream:read(1)
+    len = stream:read(1):byte()
     if len > 0 then stream:seek("cur", len) end
   until len == 0
 end
