@@ -32,7 +32,7 @@ end
 
 local function readBits(str, index, count)
   local n, bit = 0, index%8
-  local pos, rc = (index-bit)/8+1, 0
+  local pos, rc = (index-bit)*0.125+1, 0
   while count > 0 do
     n = n << rc
     
@@ -46,7 +46,7 @@ local function readBits(str, index, count)
   return n
 end
 local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLen, wordMin, wordFull, str, strLen)--todo: сделать контейнер для переменных, ибо тот-же str может жрать память на передачу в аргумент
-  local part, max, ind, prevPart, ps = {}, strLen*8
+  local part, max, prevPart, ind, ps = {}, strLen*8, ""
   while true do
     if index+wordLen >= max then break end
     ind = readBits(str, index, wordLen)
