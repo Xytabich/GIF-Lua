@@ -214,7 +214,7 @@ function gif.parts(stream, pos)
   return function()
     while true do
       id = stream:read(1):byte()
-      if id == 0x3B return nil end -- end of file
+      if id == 0x3B then return nil end -- end of file
       
       tmp = readBlock(id, stream, struct, tmp)
       if id == 0x2C then
