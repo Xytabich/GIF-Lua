@@ -31,7 +31,8 @@ local function readExtension(id, stream, struct)--todo: записывать р�
 end
 
 local function readBits(str, index, count)
-  local n, bit, pos, rc = 0, index%8, (index-bit)/8, 0
+  local n, bit = 0, index%8
+  local pos, rc = (index-bit)/8, 0
   while count > 0 do
     n = n << rc
     
