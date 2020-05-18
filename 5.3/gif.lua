@@ -27,7 +27,7 @@ local function toColorArray(str, count)
 end
 
 --- IMAGE READ ---
-local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLen, wordMin, wordFull, str, strLen)
+local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLen, wordFull, wordMin, str, strLen)
   local part, max, prevPart, ind, ps = {}, strLen*8, ""
   while true do
     if dictIndex > wordFull then
@@ -38,10 +38,11 @@ local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLe
     ind = readBits(str, index, wordLen)
     if ind == stop then break
     elseif ind == clear then
-      dictIndex = stop+1
       invDict = {}
       for i=1,clear-1 do invDict[dict[i]] = i end
       index = index+wordLen
+      dictIndex = stop+1
+      wordLen = wordMin
     else
       if ind>#dict then
         ps = prevPart..prevPart:sub(1,1)
