@@ -93,7 +93,7 @@ local function readImage(stream, struct)
   end
   
   str = stream:read(2)
-  local lzwMin = str:byte(10)
+  local lzwMin = str:byte(1)
   
   local dict, invDict = {}, {}
   for i=0,(img.colorsCount or struct.colorsCount or 256)-1 do dict[i] = string.char(i) invDict[dict[i]] = i end
@@ -103,7 +103,7 @@ local function readImage(stream, struct)
   local wordLen, wordFull = lzwMin, lzwMin^2-1
   
   local data, part
-  local len = str:byte(11)
+  local len = str:byte(2)
   str = ""
   repeat
     str = str:sub(math.floor(bitIndex*0.125)+1, str:len())..stream:read(len)
