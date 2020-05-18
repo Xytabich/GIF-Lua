@@ -48,6 +48,7 @@ end
 local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLen, wordMin, wordFull, str, strLen)--todo: сделать контейнер для переменных, ибо тот-же str может жрать память на передачу в аргумент
   local part, max, ind, prevPart, ps = {}, strLen*8
   while true do
+    if index+wordLen >= max then break end
     ind = readBits(str, index, wordLen)
     if ind == stop then break
     elseif ind == clear then
@@ -74,7 +75,6 @@ local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLe
         end
       end
     end
-    if index+wordLen >= max then break end
   end
   return table.concat(part, ""), dictIndex, index, wordLen, wordFull, invDict
 end
@@ -126,8 +126,9 @@ end
 function gif.read(stream, pos)
   if not pos then pos = 0 end
   stream:seek("set", pos)
-  local str = stream:read(6)
-  if str == "GIF89a" then
+  local str = stream:read(3)
+  if str == "GIF" then
+    stream:seek("cur", 3)
     local struct = {}
     str = stream:read(7)
     struct.width = str:byte(1) + str:byte(2)*256
@@ -147,6 +148,6 @@ function gif.read(stream, pos)
       readBlock(str:byte(), stream, struct)
     until str == ";" -- 0x3B, end of file
   end
-  return nil, "invalid format or version"
+  return nil, "invalid format"
 end
 return gif
