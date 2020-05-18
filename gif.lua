@@ -96,7 +96,7 @@ local function readImage(stream, struct)
   local lzwMin = str:byte(10)
   
   local dict, invDict = {}, {}
-  for i=0,img.colorsCount-1 do dict[i] = string.char(i) invDict[dict[i]] = i end
+  for i=0,(img.colorsCount or struct.colorsCount or 256)-1 do dict[i] = string.char(i) invDict[dict[i]] = i end
   
   local clear, stop = #dict+1, #dict+2
   local dictIndex, bitIndex = stop+1, 0 -- dictIndex - next entry index
