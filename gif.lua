@@ -10,7 +10,7 @@ local function toColorArray(str, count)
   end
   return t
 end
-local function readExtension(id, stream, struct)--todo: записывать расширения в саму картинку, а не в список расширений(т.е. сделать временную переменную extension, которую будет смотреть картинка при декоде)
+local function readExtension(id, stream, tmpExt)
   local len
   if id == 0xF9 then
     len = stream:read(1):byte()
@@ -23,12 +23,46 @@ local function readExtension(id, stream, struct)--todo: записывать р�
     if bitsToNumber(flags, 7, 1) == 1 then
       ext.transparentIndex = str:byte(4)
     end
-    table.insert(struct.extensions, ext)
-  end--todo: читалка текста и анимации кадров
-  repeat
+    if not tmpExt then tmpExt = {} end
+    tmpExt.graphics = ext
+  elseif id == 0xFF then
+    len = stream:read(1):byte()
+    local str = stream:read(len)
+    if str:sub(1, 11) == "NETSCAPE2.0" then
+      len = stream:read(1):byte()
+      str = stream:read(len)
+      local ext = {}
+      ext.iterations = str:byte(2) + str:byte(3)*256
+      ext.loop = ext.iterations == 0
+      if not tmpExt then tmpExt = {} end
+      tmpExt.app = ext
+    end
+  elseif id == 0x01 then
+    len = stream:read(1):byte()
+    local str = stream:read(len)
+    local ext = {}
+    ext.x = str:byte(1) + str:byte(2)*256
+    ext.y = str:byte(3) + str:byte(4)*256
+    ext.width = str:byte(5) + str:byte(6)*256
+    ext.height = str:byte(7) + str:byte(8)*256
+    ext.charWidth = str:byte(9)
+    ext.charHeight = str:byte(10)
+    ext.fgIndex = str:byte(11)
+    ext.bgIndex = str:byte(12)
+    local textParts = {}
+    repeat
+      len = stream:read(1):byte()
+      if len > 0 then table.insert(textParts, stream:read(len)) end
+    until len == 0
+    ext.text = table.concat(textParts, "")
+    tmpExt.text = ext
+    return tmpExt
+  end -- commment block?
+  repeat -- skip other
     len = stream:read(1):byte()
     if len > 0 then stream:seek("cur", len) end
   until len == 0
+  return tmpExt
 end
 
 local function readBits(str, index, count)
@@ -46,7 +80,7 @@ local function readBits(str, index, count)
   end
   return n
 end
-local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLen, wordMin, wordFull, str, strLen)--todo: сделать контейнер для переменных, ибо тот-же str может жрать память на передачу в аргумент
+local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLen, wordMin, wordFull, str, strLen)
   local part, max, prevPart, ind, ps = {}, strLen*8, ""
   while true do
     if index+wordLen >= max then break end
@@ -80,13 +114,14 @@ local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLe
   end
   return table.concat(part, ""), dictIndex, index, wordLen, wordFull, invDict
 end
-local function readImage(stream, struct)
+local function readImage(stream, struct, tmpExt)
   local img = {}
   local str = stream:read(9)
   img.x = str:byte(1) + str:byte(2)*256
   img.y = str:byte(3) + str:byte(4)*256
   img.width = str:byte(5) + str:byte(6)*256
   img.height = str:byte(7) + str:byte(8)*256
+  img.extensions = tmpExt
   
   local flags = str:byte(9)
   img.interlaced = bitsToNumber(flags, 6, 1) == 1
@@ -116,17 +151,17 @@ local function readImage(stream, struct)
     len = stream:read(1):byte()
   until len == 0
   img.pixels = data
-  table.insert(struct.images, img)
+  return img
 end
-local function readBlock(id, stream, struct)
+local function readBlock(id, stream, struct, tmpExt)
   if id == 0x21 then -- extension
     local str = stream:read(1)
-    readExtension(str:byte(), stream, struct)
+    return readExtension(str:byte(), stream, tmpExt)
   elseif id == 0x2C then -- image
-    readImage(stream, struct)
+    return readImage(stream, struct, tmpExt)
   end
 end
-function gif.read(stream, pos)
+local function readBase(stream, pos)
   if not pos then pos = 0 end
   stream:seek("set", pos)
   local str = stream:read(3)
@@ -144,14 +179,42 @@ function gif.read(stream, pos)
       struct.colorsCount = 2^(bitsToNumber(flags, 0, 3)+1)
       struct.colors = toColorArray(stream:read(struct.colorsCount*3), struct.colorsCount)
     end
-    struct.images = {}
-    struct.extensions = {}
-    repeat
-      str = stream:read(1)
-      readBlock(str:byte(), stream, struct)
-    until str == ";" -- 0x3B, end of file
     return struct
   end
   return nil, "invalid format"
+end
+function gif.read(stream, pos)
+  local struct, err = readBase(stream, pos)
+  if not struct then return nil, err end
+  
+  local tmp, id
+  struct.images = {}
+  repeat
+    id = stream:read(1):byte()
+    tmp = readBlock(id, stream, struct, tmp)
+    if id == 0x2C then
+      table.insert(struct.images, tmp)
+      tmp = nil
+    end
+  until id == 0x3B -- end of file
+  return struct
+end
+function gif.parts(stream, pos)
+  local struct, err = readBase(stream, pos)
+  if not struct then return nil, err end
+  
+  local tmp, id, img
+  return function()
+    while true do
+      id = stream:read(1):byte()
+      if id == 0x3B return nil end -- end of file
+      
+      tmp = readBlock(id, stream, struct, tmp)
+      if id == 0x2C then
+        img, tmp = tmp, nil
+        return struct, img
+      end
+    end
+  end
 end
 return gif
