@@ -32,7 +32,7 @@ end
 
 local function readBits(str, index, count)
   local n, bit = 0, index%8
-  local pos, rc = (index-bit)/8, 0
+  local pos, rc = (index-bit)/8+1, 0
   while count > 0 do
     n = n << rc
     
