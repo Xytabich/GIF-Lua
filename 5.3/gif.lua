@@ -81,7 +81,7 @@ local function readImage(stream, struct, tmpExt)
   end
   
   str = stream:read(2)
-  local lzwMin = str:byte(1)
+  local lzwMin = str:byte(1)+1
   
   local dict, invDict = {}, {}
   for i=0,(img.colorsCount or struct.colorsCount or 256)-1 do dict[i] = string.char(i) invDict[dict[i]] = i end
