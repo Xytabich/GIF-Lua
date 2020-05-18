@@ -56,6 +56,7 @@ local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLe
       dictIndex = stop+1
       invDict = {}
       for i=1,clear-1 do invDict[dict[i]] = i end
+      index = index+wordLen
     else
       if ind>#dict then
         ps = prevPart..prevPart:sub(1,1)
@@ -68,9 +69,9 @@ local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLe
       else
         table.insert(part, dict[ind])
         ps = prevPart..dict[ind]:sub(1,1)
+        index = index+wordLen
         if not invDict[ps] then
           dict[dictIndex] = ps
-          index = index+wordLen
           if dictIndex > wordFull then wordLen=wordLen+1 end
           dictIndex = dictIndex+1
         end
@@ -104,7 +105,7 @@ local function readImage(stream, struct)
   local dictIndex, bitIndex = stop+1, 0 -- dictIndex - next entry index
   local wordLen, wordFull = lzwMin, lzwMin^2-1
   
-  local data, part
+  local data, part = ""
   local len = str:byte(2)
   str = ""
   repeat
@@ -115,6 +116,7 @@ local function readImage(stream, struct)
     len = stream:read(1):byte()
   until len == 0
   img.pixels = data
+  table.insert(struct.images, img)
 end
 local function readBlock(id, stream, struct)
   if id == 0x21 then -- extension
@@ -135,7 +137,7 @@ function gif.read(stream, pos)
     struct.width = str:byte(1) + str:byte(2)*256
     struct.height = str:byte(3) + str:byte(4)*256
     local flags = str:byte(5)
-    struct.colorBits = bitsToNumber(flags, 4, 3)+1
+    --struct.colorBits = bitsToNumber(flags, 4, 3)+1
     struct.bgIndex = str:byte(6)
     struct.aspectRatio = str:byte(7)
     if bitsToNumber(flags, 7, 1) == 1 then
@@ -148,6 +150,7 @@ function gif.read(stream, pos)
       str = stream:read(1)
       readBlock(str:byte(), stream, struct)
     until str == ";" -- 0x3B, end of file
+    return struct
   end
   return nil, "invalid format"
 end
