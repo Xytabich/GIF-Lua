@@ -3,9 +3,10 @@ local function bitsToNumber(byte, pos, count)
   return (byte>>pos)&(2^count-1)
 end
 local function toColorArray(str, count)
-  local t = {}
+  local t, r, g, b = {}
   for i=0,count-1 do
-    t[i] = str:byte(i*3+1, i*3+3)
+    r, g, b = str:byte(i*3+1, i*3+3)
+    t[i] = r*65536+g*256+b
   end
   return t
 end
@@ -90,7 +91,7 @@ local function readImage(stream, struct)
   img.interlaced = bitsToNumber(flags, 6, 1) == 1
   if bitsToNumber(flags, 7, 1) == 1 then
     img.colorsCount = 2^(bitsToNumber(flags, 0, 3)+1)
-    img.colors = toColorArray(stream:read(img.colorsCount), img.colorsCount)
+    img.colors = toColorArray(stream:read(img.colorsCount*3), img.colorsCount)
   end
   
   str = stream:read(2)
@@ -139,7 +140,7 @@ function gif.read(stream, pos)
     struct.aspectRatio = str:byte(7)
     if bitsToNumber(flags, 7, 1) == 1 then
       struct.colorsCount = 2^(bitsToNumber(flags, 0, 3)+1)
-      struct.colors = toColorArray(stream:read(struct.colorsCount), struct.colorsCount)
+      struct.colors = toColorArray(stream:read(struct.colorsCount*3), struct.colorsCount)
     end
     struct.images = {}
     struct.extensions = {}
