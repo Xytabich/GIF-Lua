@@ -62,14 +62,13 @@ local function readImgBlock(dict, dictIndex, clear, stop, index, wordLen, wordFu
   end
   return table.concat(part, ""), dictIndex, index, wordLen, wordFull, prevPart
 end
-local function readImage(stream, struct, tmpExt)
+local function readImage(stream, struct)
   local img = {}
   local str = stream:read(9)
   img.x = str:byte(1) + str:byte(2)*256
   img.y = str:byte(3) + str:byte(4)*256
   img.width = str:byte(5) + str:byte(6)*256
   img.height = str:byte(7) + str:byte(8)*256
-  img.extensions = tmpExt
   
   local flags = str:byte(9)
   img.interlaced = readFlagPart(flags, 6, 1) == 1
@@ -109,37 +108,35 @@ local function readImage(stream, struct, tmpExt)
 end
 
 --- BLOCKS READ ---
-local function readExtension(id, stream, struct, tmpExt)
-  local len
+local function readExtension(id, stream)
+  local len, extType, ext
   if id == 0xF9 then
     len = stream:read(1):byte()
     local str = stream:read(len)
     local flags = str:byte(1)
-    local ext = {}
+    ext = {}
     ext.dispMethod = readFlagPart(flags, 2, 3)
     ext.delay = str:byte(2) + str:byte(3)*256
     ext.inputFlag = readFlagPart(flags, 6, 1) == 1
     if readFlagPart(flags, 7, 1) == 1 then
       ext.transparentIndex = str:byte(4)
     end
-    if not tmpExt then tmpExt = {} end
-    tmpExt.graphics = ext
+    extType = "graphics"
   elseif id == 0xFF then
     len = stream:read(1):byte()
     local str = stream:read(len)
     if str:sub(1, 11) == "NETSCAPE2.0" then
       len = stream:read(1):byte()
       str = stream:read(len)
-      local ext = {}
+      ext = {}
       ext.iterations = str:byte(2) + str:byte(3)*256
       ext.loop = ext.iterations == 0
-      if not struct.extensions then struct.extensions = {} end
-      struct.extensions.app = ext
+      extType = "NETSCAPE2.0"
     end
   elseif id == 0x01 then
     len = stream:read(1):byte()
     local str = stream:read(len)
-    local ext = {}
+    ext = {}
     ext.x = str:byte(1) + str:byte(2)*256
     ext.y = str:byte(3) + str:byte(4)*256
     ext.width = str:byte(5) + str:byte(6)*256
@@ -154,28 +151,26 @@ local function readExtension(id, stream, struct, tmpExt)
       if len > 0 then table.insert(textParts, stream:read(len)) end
     until len == 0
     ext.text = table.concat(textParts, "")
-    tmpExt.text = ext
-    return tmpExt
+    return "text", ext
   elseif id == 0xFE then
     local textParts = {}
     repeat
       len = stream:read(1):byte()
       if len > 0 then table.insert(textParts, stream:read(len)) end
     until len == 0
-    tmpExt.commment = table.concat(textParts, "")
+    return "commment", table.concat(textParts, "")
   end
   repeat -- skip other
     len = stream:read(1):byte()
     if len > 0 then stream:seek("cur", len) end
   until len == 0
-  return tmpExt
+  return extType, ext
 end
-local function readBlock(id, stream, struct, tmpExt)
+local function readBlock(id, stream, struct)
   if id == 0x21 then -- extension
-    local str = stream:read(1)
-    return readExtension(str:byte(), stream, struct, tmpExt)
+    return readExtension(stream:read(1):byte(), stream)
   elseif id == 0x2C then -- image
-    return readImage(stream, struct, tmpExt)
+    return "image", readImage(stream, struct)
   end
 end
 
@@ -208,14 +203,22 @@ function gif.read(stream, pos)
   local struct, err = readBase(stream, pos)
   if not struct then return nil, err end
   
-  local tmp, id
-  struct.images = {}
+  struct.blocks = {}
+  local id, bt, bv, imgExt
   repeat
     id = stream:read(1):byte()
-    tmp = readBlock(id, stream, struct, tmp)
-    if id == 0x2C then
-      table.insert(struct.images, tmp)
-      tmp = nil
+    bt, bv = readBlock(id, stream, struct)
+    if bt then
+      if bt == "graphics" then imgExt = bv
+      else
+        if bt == "image" then
+          if imgExt then
+            bt.extension = imgExt
+            imgExt = nil
+          end
+        end
+        table.insert(struct.blocks, {type=bt, block=bv})
+      end
     end
   until id == 0x3B -- end of file
   return struct
@@ -224,16 +227,24 @@ function gif.images(stream, pos)
   local struct, err = readBase(stream, pos)
   if not struct then return nil, err end
   
-  local tmp, id, img
+  local id, bt, bv, imgExt
   return function()
     while true do
       id = stream:read(1):byte()
       if id == 0x3B then return nil end -- end of file
       
-      tmp = readBlock(id, stream, struct, tmp)
-      if id == 0x2C then
-        img, tmp = tmp, nil
-        return struct, img
+      bt, bv = readBlock(id, stream, struct)
+      if bt then
+        if bt == "graphics" then imgExt = bv
+        else
+          if bt == "image" then
+            if imgExt then
+              bt.extension = imgExt
+              imgExt = nil
+            end
+            return bv
+          end
+        end
       end
     end
   end
@@ -248,17 +259,17 @@ function gif.blocks(stream, pos)
       id = stream:read(1):byte()
       if id == 0x3B then return nil end -- end of file
       
-      tmp = readBlock(id, stream, struct, tmp)
-      if id == 0x2C then
-        img, tmp = tmp, nil
-        return struct, "image", img
-      elseif tmp then
-        for k,v in pairs(tmp) do
-          if k ~= "graphics" then -- image extension only
-            tmp[k] = nil
-            if not pairs(tmp)() then tmp = nil end
-            return struct, k, v
+      bt, bv = readBlock(id, stream, struct)
+      if bt then
+        if bt == "graphics" then imgExt = bv
+        else
+          if bt == "image" then
+            if imgExt then
+              bt.extension = imgExt
+              imgExt = nil
+            end
           end
+          return bt, bv
         end
       end
     end
