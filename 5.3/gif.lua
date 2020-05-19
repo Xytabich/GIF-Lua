@@ -213,7 +213,7 @@ function gif.read(stream, pos)
       else
         if bt == "image" then
           if imgExt then
-            bt.extension = imgExt
+            bv.extension = imgExt
             imgExt = nil
           end
         end
@@ -239,7 +239,7 @@ function gif.images(stream, pos)
         else
           if bt == "image" then
             if imgExt then
-              bt.extension = imgExt
+              bv.extension = imgExt
               imgExt = nil
             end
             return bv
@@ -265,7 +265,7 @@ function gif.blocks(stream, pos)
         else
           if bt == "image" then
             if imgExt then
-              bt.extension = imgExt
+              bv.extension = imgExt
               imgExt = nil
             end
           end
