@@ -4,10 +4,11 @@ local function readFlagPart(byte, pos, count)
 end
 local function readBits(str, index, count)--todo: не пашет читалка
   local n, bit = 0, index%8
-  local pos, rc = (index-bit)*0.125+1, 0
+  local pos, rc, prc = (index-bit)*0.125+1, 0, 0
   while count > 0 do
     rc = math.min(8-bit, count)
-    n = n | (((str:byte(pos)>>bit)&(2^rc-1))<< rc)
+    n = n | (((str:byte(pos)>>bit)&(2^rc-1)) << prc)
+    prc = rc
     
     pos = pos+1
     bit = 0
