@@ -2,16 +2,16 @@
 local function readFlagPart(byte, pos, count)
   return (byte>>pos)&(2^count-1)
 end
-local function readBits(str, index, count)--todo: не пашет читалка
-  local n, bit = 0, index%8
-  local pos, rc, prc = (index-bit)*0.125+1, 0, 0
+local function readBits(str, index, count)
+  local pos, n, wo, rc = math.floor(index*0.125+1), 0, 0
+  index = index%8
   while count > 0 do
-    rc = math.min(8-bit, count)
-    n = n | (((str:byte(pos)>>bit)&(2^rc-1)) << prc)
-    prc = rc
+    rc = math.min(8-index, count)
+    n = n | (((str:byte(pos)>>index)&(2^rc-1)) << wo)
+    wo = rc
     
     pos = pos+1
-    bit = 0
+    index = 0
     count = count-rc
   end
   return n
