@@ -79,11 +79,17 @@ local function readImage(stream, struct, tmpExt)
   local lzwMin = str:byte(1)+1
   
   local dict = {}
-  for i=0,(img.colorsCount or struct.colorsCount or 256)-1 do dict[i] = string.char(i) end
+  local dictIndex = 0
+  for i=1,(img.colorsCount or struct.colorsCount or 256) do
+    dict[dictIndex] = string.char(i-1)
+    dictIndex = dictIndex+1
+  end
   
-  local clear, stop = #dict+1, #dict+2
-  local dictIndex, bitIndex = stop+1, 0 -- dictIndex - next entry index
-  local wordLen, wordFull = lzwMin, 2^lzwMin-1
+  local clear, stop = dictIndex, dictIndex+1
+  dictIndex = dictIndex+2
+  
+  local bitIndex = 0
+  local wordLen, wordFull, bitIndex = lzwMin, 2^lzwMin-1
   
   local data, part = ""
   local len = str:byte(2)
