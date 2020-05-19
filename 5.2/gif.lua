@@ -246,7 +246,7 @@ function gif.images(stream, pos)
               bv.extension = imgExt
               imgExt = nil
             end
-            return bv
+            return struct, bv
           end
         end
       end
@@ -275,7 +275,7 @@ function gif.blocks(stream, pos)
               imgExt = nil
             end
           end
-          return bt, bv
+          return struct, bt, bv
         end
       end
     end
