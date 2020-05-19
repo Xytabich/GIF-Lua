@@ -48,13 +48,15 @@ local function readImgBlock(dict, dictIndex, clear, stop, index, wordLen, wordFu
         table.insert(part, cs)
         prevPart = cs
       end
-      if prevPart ~= "" then dict[dictIndex] = ps end
-      index = index+wordLen
-      if dictIndex > wordFull then
-        wordLen = wordLen+1
-        wordFull = 2^wordLen-1
+      if prevPart ~= "" then
+        dict[dictIndex] = ps
+        index = index+wordLen
+        if dictIndex > wordFull then
+          wordLen = wordLen+1
+          wordFull = 2^wordLen-1
+        end
+        dictIndex = dictIndex+1
       end
-      dictIndex = dictIndex+1
     end
   end
   return table.concat(part, ""), dictIndex, index, wordLen, wordFull
