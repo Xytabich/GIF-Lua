@@ -26,15 +26,13 @@ local function toColorArray(str, count)
 end
 
 --- IMAGE READ ---
-local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLen, wordFull, wordMin, str, strLen)
+local function readImgBlock(dict, dictIndex, clear, stop, index, wordLen, wordFull, wordMin, str, strLen)
   local part, max, prevPart, ind, ps = {}, strLen*8, ""
   while true do
     if index+wordLen >= max then break end
     ind = readBits(str, index, wordLen)
     if ind == stop then break
     elseif ind == clear then
-      invDict = {}
-      for i=1,clear-1 do invDict[dict[i]] = i end
       index = index+wordLen
       dictIndex = stop+1
       wordLen = wordMin
@@ -42,7 +40,6 @@ local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLe
       if ind>#dict then
         ps = prevPart..prevPart:sub(1,1)
         dict[dictIndex] = ps
-        invDict[ps] = dictIndex
         prevPart = ps
         table.insert(part, dict[dictIndex])
         index = index+wordLen
@@ -56,19 +53,16 @@ local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLe
         ps = prevPart..dict[ind]:sub(1,1)
         prevPart = dict[ind]
         index = index+wordLen
-        if not invDict[ps] then
-          dict[dictIndex] = ps
-          invDict[ps] = dictIndex
-          if dictIndex > wordFull then
-            wordLen = wordLen+1
-            wordFull = 2^wordLen-1
-          end
-          dictIndex = dictIndex+1
+        dict[dictIndex] = ps
+        if dictIndex > wordFull then
+          wordLen = wordLen+1
+          wordFull = 2^wordLen-1
         end
+        dictIndex = dictIndex+1
       end
     end
   end
-  return table.concat(part, ""), dictIndex, index, wordLen, wordFull, invDict
+  return table.concat(part, ""), dictIndex, index, wordLen, wordFull
 end
 local function readImage(stream, struct, tmpExt)
   local img = {}
@@ -89,8 +83,8 @@ local function readImage(stream, struct, tmpExt)
   str = stream:read(2)
   local lzwMin = str:byte(1)+1
   
-  local dict, invDict = {}, {}
-  for i=0,(img.colorsCount or struct.colorsCount or 256)-1 do dict[i] = string.char(i) invDict[dict[i]] = i end
+  local dict = {}
+  for i=0,(img.colorsCount or struct.colorsCount or 256)-1 do dict[i] = string.char(i) end
   
   local clear, stop = #dict+1, #dict+2
   local dictIndex, bitIndex = stop+1, 0 -- dictIndex - next entry index
@@ -102,7 +96,7 @@ local function readImage(stream, struct, tmpExt)
   repeat
     str = str:sub(math.floor(bitIndex*0.125)+1, str:len())..stream:read(len)
     bitIndex = bitIndex%8
-    part, dictIndex, bitIndex, wordLen, wordFull, invDict = readImgBlock(dict, invDict, dictIndex, clear, stop, bitIndex, wordLen, wordFull, lzwMin, str, str:len())
+    part, dictIndex, bitIndex, wordLen, wordFull = readImgBlock(dict, dictIndex, clear, stop, bitIndex, wordLen, wordFull, lzwMin, str, str:len())
     data = data..part
     len = stream:read(1):byte()
   until len == 0
