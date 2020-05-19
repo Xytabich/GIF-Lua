@@ -29,7 +29,7 @@ end
 local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLen, wordFull, wordMin, str, strLen)
   local part, max, prevPart, ind, ps = {}, strLen*8, ""
   while true do
-    if dictIndex >= wordFull then
+    if dictIndex > wordFull then
       wordLen = wordLen+1
       wordFull = 2^wordLen-1
     end
