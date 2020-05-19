@@ -41,17 +41,14 @@ local function readImgBlock(dict, dictIndex, clear, stop, index, wordLen, wordFu
       if ind >= dictIndex then
         ps = prevPart..prevPart:sub(1,1)
         table.insert(part, ps)
-        dict[dictIndex] = ps
         prevPart = ps
       else
         cs = dict[ind]
+        ps = prevPart..cs:sub(1,1)
         table.insert(part, cs)
-        if prevPart ~= "" then
-          ps = prevPart..cs:sub(1,1)
-          dict[dictIndex] = ps
-        end
         prevPart = cs
       end
+      if prevPart ~= "" then dict[dictIndex] = ps end
       index = index+wordLen
       if dictIndex > wordFull then
         wordLen = wordLen+1
