@@ -109,7 +109,7 @@ local function readImage(stream, struct, tmpExt)
 end
 
 --- BLOCKS READ ---
-local function readExtension(id, stream, tmpExt)
+local function readExtension(id, stream, struct, tmpExt)
   local len
   if id == 0xF9 then
     len = stream:read(1):byte()
@@ -133,8 +133,8 @@ local function readExtension(id, stream, tmpExt)
       local ext = {}
       ext.iterations = str:byte(2) + str:byte(3)*256
       ext.loop = ext.iterations == 0
-      if not tmpExt then tmpExt = {} end
-      tmpExt.app = ext
+      if not struct.extensions then struct.extensions = {} end
+      struct.extensions.app = ext
     end
   elseif id == 0x01 then
     len = stream:read(1):byte()
@@ -173,7 +173,7 @@ end
 local function readBlock(id, stream, struct, tmpExt)
   if id == 0x21 then -- extension
     local str = stream:read(1)
-    return readExtension(str:byte(), stream, tmpExt)
+    return readExtension(str:byte(), stream, struct, tmpExt)
   elseif id == 0x2C then -- image
     return readImage(stream, struct, tmpExt)
   end
@@ -220,7 +220,7 @@ function gif.read(stream, pos)
   until id == 0x3B -- end of file
   return struct
 end
-function gif.parts(stream, pos)
+function gif.images(stream, pos)
   local struct, err = readBase(stream, pos)
   if not struct then return nil, err end
   
@@ -234,6 +234,32 @@ function gif.parts(stream, pos)
       if id == 0x2C then
         img, tmp = tmp, nil
         return struct, img
+      end
+    end
+  end
+end
+function gif.blocks(stream, pos)
+  local struct, err = readBase(stream, pos)
+  if not struct then return nil, err end
+  
+  local tmp, id, img
+  return function()
+    while true do
+      id = stream:read(1):byte()
+      if id == 0x3B then return nil end -- end of file
+      
+      tmp = readBlock(id, stream, struct, tmp)
+      if id == 0x2C then
+        img, tmp = tmp, nil
+        return struct, img
+      elseif tmp then
+        for k,v in pairs(tmp) do
+          if k ~= "graphics" then -- image extension only
+            tmp[k] = nil
+            if not pairs(tmp)() then tmp = nil end
+            return k, v
+          end
+        end
       end
     end
   end
