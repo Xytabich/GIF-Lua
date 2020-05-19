@@ -251,13 +251,13 @@ function gif.blocks(stream, pos)
       tmp = readBlock(id, stream, struct, tmp)
       if id == 0x2C then
         img, tmp = tmp, nil
-        return struct, img
+        return struct, "image", img
       elseif tmp then
         for k,v in pairs(tmp) do
           if k ~= "graphics" then -- image extension only
             tmp[k] = nil
             if not pairs(tmp)() then tmp = nil end
-            return k, v
+            return struct, k, v
           end
         end
       end
