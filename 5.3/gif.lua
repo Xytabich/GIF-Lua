@@ -156,7 +156,14 @@ local function readExtension(id, stream, tmpExt)
     ext.text = table.concat(textParts, "")
     tmpExt.text = ext
     return tmpExt
-  end -- commment block?
+  elseif id == 0xFE then
+    local textParts = {}
+    repeat
+      len = stream:read(1):byte()
+      if len > 0 then table.insert(textParts, stream:read(len)) end
+    until len == 0
+    tmpExt.commment = table.concat(textParts, "")
+  end
   repeat -- skip other
     len = stream:read(1):byte()
     if len > 0 then stream:seek("cur", len) end
@@ -183,7 +190,7 @@ local function readBase(stream, pos)
     struct.width = str:byte(1) + str:byte(2)*256
     struct.height = str:byte(3) + str:byte(4)*256
     local flags = str:byte(5)
-    --struct.colorBits = readFlagPart(flags, 4, 3)+1
+    struct.colorBits = readFlagPart(flags, 4, 3)+1
     struct.bgIndex = str:byte(6)
     struct.aspectRatio = str:byte(7)
     if readFlagPart(flags, 7, 1) == 1 then
