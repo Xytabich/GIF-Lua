@@ -116,7 +116,7 @@ local function readExtension(id, stream)
     local flags = str:byte(1)
     ext = {}
     ext.dispMethod = readFlagPart(flags, 2, 3)
-    ext.delay = str:byte(2) + str:byte(3)*256
+    ext.delay = (str:byte(2) + str:byte(3)*256)*0.01
     ext.inputFlag = readFlagPart(flags, 6, 1) == 1
     if readFlagPart(flags, 7, 1) == 1 then
       ext.transparentIndex = str:byte(4)
@@ -188,6 +188,7 @@ local function readBase(stream, pos)
     struct.colorBits = readFlagPart(flags, 4, 3)+1
     struct.bgIndex = str:byte(6)
     struct.aspectRatio = str:byte(7)
+    if struct.aspectRatio > 0 then struct.aspectRatio = (struct.aspectRatio+15)/64
     if readFlagPart(flags, 7, 1) == 1 then
       struct.colorsCount = 2^(readFlagPart(flags, 0, 3)+1)
       struct.colors = toColorArray(stream:read(struct.colorsCount*3), struct.colorsCount)
