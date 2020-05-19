@@ -27,8 +27,12 @@ end
 
 --- IMAGE READ ---
 local function readImgBlock(dict, dictIndex, clear, stop, index, wordLen, wordFull, wordMin, str, strLen)
-  local part, max, prevPart, ind, ps = {}, strLen*8, ""
+  local part, max, prevPart, ind, ps, cs = {}, strLen*8, ""
   while true do
+    if dictIndex > wordFull then
+      wordLen = wordLen+1
+      wordFull = 2^wordLen-1
+    end
     if index+wordLen >= max then break end
     ind = readBits(str, index, wordLen)
     if ind == stop then break
@@ -37,29 +41,19 @@ local function readImgBlock(dict, dictIndex, clear, stop, index, wordLen, wordFu
       dictIndex = stop+1
       wordLen = wordMin
     else
-      if ind>#dict then
+      if ind > #dict then
         ps = prevPart..prevPart:sub(1,1)
-        dict[dictIndex] = ps
         prevPart = ps
-        table.insert(part, dict[dictIndex])
-        index = index+wordLen
-        if dictIndex > wordFull then
-          wordLen = wordLen+1
-          wordFull = 2^wordLen-1
-        end
-        dictIndex = dictIndex+1
+        table.insert(part, ps)
       else
-        table.insert(part, dict[ind])
-        ps = prevPart..dict[ind]:sub(1,1)
-        prevPart = dict[ind]
-        index = index+wordLen
-        dict[dictIndex] = ps
-        if dictIndex > wordFull then
-          wordLen = wordLen+1
-          wordFull = 2^wordLen-1
-        end
-        dictIndex = dictIndex+1
+        cs = dict[ind]
+        table.insert(part, cs)
+        ps = prevPart..cs:sub(1,1)
+        prevPart = cs
       end
+      dict[dictIndex] = ps
+      index = index+wordLen
+      dictIndex = dictIndex+1
     end
   end
   return table.concat(part, ""), dictIndex, index, wordLen, wordFull
