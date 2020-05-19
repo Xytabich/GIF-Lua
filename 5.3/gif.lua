@@ -203,6 +203,7 @@ function gif.read(stream, pos)
   local struct, err = readBase(stream, pos)
   if not struct then return nil, err end
   
+  struct.extensions = {}
   struct.blocks = {}
   local id, bt, bv, imgExt
   repeat
@@ -210,6 +211,7 @@ function gif.read(stream, pos)
     bt, bv = readBlock(id, stream, struct)
     if bt then
       if bt == "graphics" then imgExt = bv
+      elseif bt == "NETSCAPE2.0" then struct.extensions[bt] = bv
       else
         if bt == "image" then
           if imgExt then
@@ -227,6 +229,7 @@ function gif.images(stream, pos)
   local struct, err = readBase(stream, pos)
   if not struct then return nil, err end
   
+  struct.extensions = {}
   local id, bt, bv, imgExt
   return function()
     while true do
@@ -236,6 +239,7 @@ function gif.images(stream, pos)
       bt, bv = readBlock(id, stream, struct)
       if bt then
         if bt == "graphics" then imgExt = bv
+        elseif bt == "NETSCAPE2.0" then struct.extensions[bt] = bv
         else
           if bt == "image" then
             if imgExt then
@@ -253,6 +257,7 @@ function gif.blocks(stream, pos)
   local struct, err = readBase(stream, pos)
   if not struct then return nil, err end
   
+  struct.extensions = {}
   local tmp, id, img
   return function()
     while true do
@@ -262,6 +267,7 @@ function gif.blocks(stream, pos)
       bt, bv = readBlock(id, stream, struct)
       if bt then
         if bt == "graphics" then imgExt = bv
+        elseif bt == "NETSCAPE2.0" then struct.extensions[bt] = bv
         else
           if bt == "image" then
             if imgExt then
