@@ -89,7 +89,7 @@ local function readImage(stream, struct, tmpExt)
   dictIndex = dictIndex+2
   
   local bitIndex = 0
-  local wordLen, wordFull, bitIndex = lzwMin, 2^lzwMin-1
+  local wordLen, wordFull = lzwMin, 2^lzwMin-1
   
   local data, part = ""
   local len = str:byte(2)
