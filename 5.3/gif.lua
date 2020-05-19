@@ -2,14 +2,13 @@
 local function readFlagPart(byte, pos, count)
   return (byte>>pos)&(2^count-1)
 end
-local function readBits(str, index, count)
+local function readBits(str, index, count)--todo: не пашет читалка
   local n, bit = 0, index%8
   local pos, rc = (index-bit)*0.125+1, 0
   while count > 0 do
-    n = n << rc
     
     rc = math.min(8-bit, count)
-    n = n | (str:byte(pos)>>bit)&(2^rc-1)
+    n = n | (((str:byte(pos)>>bit)&(2^rc-1))<< rc)
     
     pos = pos+1
     bit = 0
@@ -30,6 +29,10 @@ end
 local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLen, wordFull, wordMin, str, strLen)
   local part, max, prevPart, ind, ps = {}, strLen*8, ""
   while true do
+    if dictIndex > wordFull then
+      wordLen = wordLen+1
+      wordFull = 2^wordLen-1
+    end
     if index+wordLen >= max then break end
     ind = readBits(str, index, wordLen)
     if ind == stop then break
@@ -48,10 +51,6 @@ local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLe
         table.insert(part, dict[dictIndex])
         index = index+wordLen
         dictIndex = dictIndex+1
-        if dictIndex > wordFull then
-          wordLen = wordLen+1
-          wordFull = 2^wordLen-1
-        end
       else
         table.insert(part, dict[ind])
         ps = prevPart..dict[ind]:sub(1,1)
@@ -61,10 +60,6 @@ local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLe
           dict[dictIndex] = ps
           invDict[ps] = dictIndex
           dictIndex = dictIndex+1
-          if dictIndex > wordFull then
-            wordLen = wordLen+1
-            wordFull = 2^wordLen-1
-          end
         end
       end
     end
@@ -103,7 +98,7 @@ local function readImage(stream, struct, tmpExt)
   repeat
     str = str:sub(math.floor(bitIndex*0.125)+1, str:len())..stream:read(len)
     bitIndex = bitIndex%8
-    part, dictIndex, index, wordLen, wordFull, invDict = readImgBlock(dict, invDict, dictIndex, clear, stop, bitIndex, wordLen, wordFull, lzwMin, str, str:len())
+    part, dictIndex, bitIndex, wordLen, wordFull, invDict = readImgBlock(dict, invDict, dictIndex, clear, stop, bitIndex, wordLen, wordFull, lzwMin, str, str:len())
     data = data..part
     len = stream:read(1):byte()
   until len == 0
