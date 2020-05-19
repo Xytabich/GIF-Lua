@@ -45,11 +45,11 @@ local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLe
         prevPart = ps
         table.insert(part, dict[dictIndex])
         index = index+wordLen
-        if dictIndex > wordFull then
+        dictIndex = dictIndex+1
+        if dictIndex >= wordFull then
           wordLen = wordLen+1
           wordFull = 2^wordLen-1
         end
-        dictIndex = dictIndex+1
       else
         table.insert(part, dict[ind])
         ps = prevPart..dict[ind]:sub(1,1)
@@ -58,11 +58,11 @@ local function readImgBlock(dict, invDict, dictIndex, clear, stop, index, wordLe
         if not invDict[ps] then
           dict[dictIndex] = ps
           invDict[ps] = dictIndex
-          if dictIndex > wordFull then
+          dictIndex = dictIndex+1
+          if dictIndex >= wordFull then
             wordLen = wordLen+1
             wordFull = 2^wordLen-1
           end
-          dictIndex = dictIndex+1
         end
       end
     end
