@@ -188,7 +188,7 @@ local function readBase(stream, pos)
     struct.colorBits = readFlagPart(flags, 4, 3)+1
     struct.bgIndex = str:byte(6)
     struct.aspectRatio = str:byte(7)
-    if struct.aspectRatio > 0 then struct.aspectRatio = (struct.aspectRatio+15)/64
+    if struct.aspectRatio > 0 then struct.aspectRatio = (struct.aspectRatio+15)/64 end
     if readFlagPart(flags, 7, 1) == 1 then
       struct.colorsCount = 2^(readFlagPart(flags, 0, 3)+1)
       struct.colors = toColorArray(stream:read(struct.colorsCount*3), struct.colorsCount)
