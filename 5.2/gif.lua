@@ -1,13 +1,15 @@
 --- HELPERS ---
+local math_floor, concat, str_char, band, bor, rshift, lshift = math.floor, table.concat, string.char, bit32.band, bit32.bor, bit32.rshift, bit32.lshift
 local function readFlagPart(byte, pos, count)
-  return bit32.band(bit32.rshift(byte, pos), 2^count-1)
+  return band(rshift(byte, pos), 2^count-1)
 end
 local function readBits(str, index, count)
-  local pos, n, wo, rc = math.floor(index*0.125+1), 0, 0
+  local pos, n, wo, rc = math_floor(index*0.125+1), 0, 0
   index = index%8
   while count > 0 do
-    rc = math.min(8-index, count)
-    n = bit32.bor(n, bit32.lshift(bit32.band(bit32.rshift(str:byte(pos), index), 2^rc-1), wo))
+    rc = 8-index
+    if count < rc then rc = count end
+    n = bor(n, lshift(band(rshift(str:byte(pos), index), 2^rc-1), wo))
     wo = rc
     
     pos = pos+1
@@ -62,7 +64,7 @@ local function readImgBlock(dict, dictIndex, clear, stop, index, wordLen, wordFu
       prevPart = cs
     end
   end
-  return table.concat(part, ""), dictIndex, index, wordLen, wordFull, prevPart
+  return concat(part, ""), dictIndex, index, wordLen, wordFull, prevPart
 end
 local function readImage(stream, struct)
   local img = {}
@@ -85,7 +87,7 @@ local function readImage(stream, struct)
   local dict = {}
   local dictIndex = 0
   for i=1,(img.colorsCount or struct.colorsCount or 256) do
-    dict[dictIndex] = string.char(i-1)
+    dict[dictIndex] = str_char(i-1)
     dictIndex = dictIndex+1
   end
   
@@ -99,7 +101,7 @@ local function readImage(stream, struct)
   local len = str:byte(2)
   str = ""
   repeat
-    str = str:sub(math.floor(bitIndex*0.125)+1, str:len())..stream:read(len)
+    str = str:sub(math_floor(bitIndex*0.125)+1, str:len())..stream:read(len)
     bitIndex = bitIndex%8
     part, dictIndex, bitIndex, wordLen, wordFull, prevPart = readImgBlock(dict, dictIndex, clear, stop, bitIndex, wordLen, wordFull, lzwMin, str, str:len(), prevPart)
     data = data..part
@@ -155,7 +157,7 @@ local function readExtension(id, stream)
         partInd = partInd+1
       end
     until len == 0
-    ext.text = table.concat(textParts, "")
+    ext.text = concat(textParts, "")
     return "text", ext
   elseif id == 0xFE then
     local textParts, partInd = {}, 1
@@ -166,7 +168,7 @@ local function readExtension(id, stream)
         partInd = partInd+1
       end
     until len == 0
-    return "commment", table.concat(textParts, "")
+    return "commment", concat(textParts, "")
   end
   repeat -- skip other
     len = stream:read(1):byte()
