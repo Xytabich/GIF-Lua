@@ -1,13 +1,15 @@
 --- HELPERS ---
+local math_floor, concat, str_char, band, bor, rshift, lshift = math.floor, table.concat, string.char, bit32.band, bit32.bor, bit32.rshift, bit32.lshift
 local function readFlagPart(byte, pos, count)
-  return bit32.band(bit32.rshift(byte, pos), 2^count-1)
+  return band(rshift(byte, pos), 2^count-1)
 end
 local function readBits(str, index, count)
-  local pos, n, wo, rc = math.floor(index*0.125+1), 0, 0
+  local pos, n, wo, rc = math_floor(index*0.125+1), 0, 0
   index = index%8
   while count > 0 do
-    rc = math.min(8-index, count)
-    n = bit32.bor(n, bit32.lshift(bit32.band(bit32.rshift(str:byte(pos), index), 2^rc-1), wo))
+    rc = 8-index
+    if count < rc then rc = count end
+    n = bor(n, lshift(band(rshift(str:byte(pos), index), 2^rc-1), wo))
     wo = rc
     
     pos = pos+1
@@ -27,7 +29,7 @@ end
 
 --- IMAGE READ ---
 local function readImgBlock(dict, dictIndex, clear, stop, index, wordLen, wordFull, wordMin, str, strLen, prevPart)
-  local part, max, ind, cs = {}, strLen*8
+  local part, partInd, max, ind, cs = {}, 1, strLen*8
   while true do
     if dictIndex > wordFull then
       wordLen = wordLen+1
@@ -45,12 +47,14 @@ local function readImgBlock(dict, dictIndex, clear, stop, index, wordLen, wordFu
     else
       if ind >= dictIndex then
         cs = prevPart..prevPart:sub(1,1)
-        table.insert(part, cs)
+        part[partInd] = cs
+        partInd = partInd+1
         dict[dictIndex] = cs
         dictIndex = dictIndex+1
       else
         cs = dict[ind]
-        table.insert(part, cs)
+        part[partInd] = cs
+        partInd = partInd+1
         if prevPart then
           dict[dictIndex] = prevPart..cs:sub(1,1)
           dictIndex = dictIndex+1
@@ -60,7 +64,7 @@ local function readImgBlock(dict, dictIndex, clear, stop, index, wordLen, wordFu
       prevPart = cs
     end
   end
-  return table.concat(part, ""), dictIndex, index, wordLen, wordFull, prevPart
+  return concat(part, ""), dictIndex, index, wordLen, wordFull, prevPart
 end
 local function readImage(stream, struct)
   local img = {}
@@ -83,7 +87,7 @@ local function readImage(stream, struct)
   local dict = {}
   local dictIndex = 0
   for i=1,(img.colorsCount or struct.colorsCount or 256) do
-    dict[dictIndex] = string.char(i-1)
+    dict[dictIndex] = str_char(i-1)
     dictIndex = dictIndex+1
   end
   
@@ -97,7 +101,7 @@ local function readImage(stream, struct)
   local len = str:byte(2)
   str = ""
   repeat
-    str = str:sub(math.floor(bitIndex*0.125)+1, str:len())..stream:read(len)
+    str = str:sub(math_floor(bitIndex*0.125)+1, str:len())..stream:read(len)
     bitIndex = bitIndex%8
     part, dictIndex, bitIndex, wordLen, wordFull, prevPart = readImgBlock(dict, dictIndex, clear, stop, bitIndex, wordLen, wordFull, lzwMin, str, str:len(), prevPart)
     data = data..part
@@ -145,20 +149,26 @@ local function readExtension(id, stream)
     ext.charHeight = str:byte(10)
     ext.fgIndex = str:byte(11)
     ext.bgIndex = str:byte(12)
-    local textParts = {}
+    local textParts, partInd = {}, 1
     repeat
       len = stream:read(1):byte()
-      if len > 0 then table.insert(textParts, stream:read(len)) end
+      if len > 0 then
+        textParts[partInd] = stream:read(len)
+        partInd = partInd+1
+      end
     until len == 0
-    ext.text = table.concat(textParts, "")
+    ext.text = concat(textParts, "")
     return "text", ext
   elseif id == 0xFE then
-    local textParts = {}
+    local textParts, partInd = {}, 1
     repeat
       len = stream:read(1):byte()
-      if len > 0 then table.insert(textParts, stream:read(len)) end
+      if len > 0 then
+        textParts[partInd] = stream:read(len)
+        partInd = partInd+1
+      end
     until len == 0
-    return "commment", table.concat(textParts, "")
+    return "commment", concat(textParts, "")
   end
   repeat -- skip other
     len = stream:read(1):byte()
@@ -206,7 +216,7 @@ function gif.read(stream, pos)
   
   struct.extensions = {}
   struct.blocks = {}
-  local id, bt, bv, imgExt
+  local blockInd, id, bt, bv, imgExt = 1
   repeat
     id = stream:read(1):byte()
     bt, bv = readBlock(id, stream, struct)
@@ -220,7 +230,8 @@ function gif.read(stream, pos)
             imgExt = nil
           end
         end
-        table.insert(struct.blocks, {type=bt, block=bv})
+        struct.blocks[blockInd] = {type=bt, block=bv}
+        blockInd = blockInd+1
       end
     end
   until id == 0x3B -- end of file
