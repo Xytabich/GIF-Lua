@@ -10,7 +10,7 @@ local function readBits(str, index, count)
     rc = 8-index
     if count < rc then rc = count end
     n = bor(n, lshift(band(rshift(str:byte(pos), index), 2^rc-1), wo))
-    wo = rc
+    wo = wo+rc
     
     pos = pos+1
     index = 0
